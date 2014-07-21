@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <memory>
+
 
 // CImageResizeDlg dialog
 class CImageResizeDlg : public CDialogEx {
@@ -29,8 +31,12 @@ class CImageResizeDlg : public CDialogEx {
   afx_msg HCURSOR OnQueryDragIcon();
   DECLARE_MESSAGE_MAP()
  public:
-  afx_msg void OnBnClickedButton1();
   afx_msg void OnBnClickedButtonOpen();
   afx_msg void OnEnKillfocusTargetSizeWL();
   afx_msg void OnEnKillfocusTargetSizeHL();
+  afx_msg void OnBnClickedButtonResize();
+
+ private:
+  int interpolation_method;
+  std::shared_ptr<cv::Mat> img;
 };

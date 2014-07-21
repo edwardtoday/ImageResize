@@ -8,6 +8,7 @@
 #include "afxdialogex.h"
 
 #include <stdlib.h>
+#include <errno.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -47,7 +48,8 @@ END_MESSAGE_MAP()
 
 
 CImageResizeDlg::CImageResizeDlg(CWnd* pParent /*=NULL*/)
-  : CDialogEx(CImageResizeDlg::IDD, pParent) {
+  : CDialogEx(CImageResizeDlg::IDD, pParent),
+    interpolation_method(0) {
   m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
@@ -64,6 +66,7 @@ BEGIN_MESSAGE_MAP(CImageResizeDlg, CDialogEx)
                   &CImageResizeDlg::OnEnKillfocusTargetSizeWL)
   ON_EN_KILLFOCUS(IDC_TARGET_SIZE_H_L,
                   &CImageResizeDlg::OnEnKillfocusTargetSizeHL)
+  ON_BN_CLICKED(IDC_BUTTON_RESIZE, &CImageResizeDlg::OnBnClickedButtonResize)
 END_MESSAGE_MAP()
 
 
@@ -146,15 +149,15 @@ void CImageResizeDlg::OnBnClickedButtonOpen() {
     FilePathName = dlg.GetPathName();
     GetDlgItem(IMAGE_FILENAME)->SetWindowText(FilePathName);
     CT2CA pszConvertedAnsiString(FilePathName);
-    cv::Mat img = cv::imread(std::string(pszConvertedAnsiString),
-                             CV_LOAD_IMAGE_UNCHANGED);
+    img = std::make_shared<cv::Mat>(
+            cv::imread(std::string(pszConvertedAnsiString), CV_LOAD_IMAGE_UNCHANGED));
 
-    if (!img.empty()) {
+    if (!img->empty()) {
       CString int_to_str;
-      int_to_str.Format(L"%d", img.rows);
+      int_to_str.Format(L"%d", img->rows);
       GetDlgItem(IDC_SOURCE_SIZE_W_L)->SetWindowText(int_to_str);
       GetDlgItem(IDC_TARGET_SIZE_W_L)->SetWindowText(int_to_str);
-      int_to_str.Format(L"%d", img.cols);
+      int_to_str.Format(L"%d", img->cols);
       GetDlgItem(IDC_SOURCE_SIZE_H_L)->SetWindowText(int_to_str);
       GetDlgItem(IDC_TARGET_SIZE_H_L)->SetWindowText(int_to_str);
       //  cv::namedWindow("Preview",
@@ -167,6 +170,7 @@ void CImageResizeDlg::OnBnClickedButtonOpen() {
   }
 }
 
+
 void CImageResizeDlg::OnEnKillfocusTargetSizeWL() {
   CButton* button = (CButton*)GetDlgItem(IDC_TARGET_SIZE_KEEP_ASPECT);
 
@@ -176,12 +180,15 @@ void CImageResizeDlg::OnEnKillfocusTargetSizeWL() {
     int src_width = _wtoi(string_value);
     GetDlgItem(IDC_SOURCE_SIZE_H_L)->GetWindowText(string_value);
     int src_height = _wtoi(string_value);
-    GetDlgItem(IDC_TARGET_SIZE_W_L)->GetWindowText(string_value);
-    int dst_width = _wtoi(string_value);
-    int dst_height = (int)round((double)src_height / (double)src_width *
-                                (double)dst_width);
-    string_value.Format(L"%d", dst_height);
-    GetDlgItem(IDC_TARGET_SIZE_H_L)->SetWindowText(string_value);
+
+    if (src_width > 0 && src_height > 0) {
+      GetDlgItem(IDC_TARGET_SIZE_W_L)->GetWindowText(string_value);
+      int dst_width = _wtoi(string_value);
+      int dst_height = (int)round((double)src_height / (double)src_width *
+                                  (double)dst_width);
+      string_value.Format(L"%d", dst_height);
+      GetDlgItem(IDC_TARGET_SIZE_H_L)->SetWindowText(string_value);
+    }
   }
 }
 
@@ -196,10 +203,45 @@ void CImageResizeDlg::OnEnKillfocusTargetSizeHL() {
     GetDlgItem(IDC_SOURCE_SIZE_H_L)->GetWindowText(string_value);
     int src_height = _wtoi(string_value);
     GetDlgItem(IDC_TARGET_SIZE_H_L)->GetWindowText(string_value);
-    int dst_height = _wtoi(string_value);
-    int dst_width = (int)round((double)src_width / (double)src_height *
-                               (double)dst_height);
-    string_value.Format(L"%d", dst_width);
-    GetDlgItem(IDC_TARGET_SIZE_W_L)->SetWindowText(string_value);
+
+    if (src_width > 0 && src_height > 0) {
+      int dst_height = _wtoi(string_value);
+      int dst_width = (int)round((double)src_width / (double)src_height *
+                                 (double)dst_height);
+      string_value.Format(L"%d", dst_width);
+      GetDlgItem(IDC_TARGET_SIZE_W_L)->SetWindowText(string_value);
+    }
+  }
+}
+
+
+void CImageResizeDlg::OnBnClickedButtonResize() {
+  if (!img || img->empty()) {
+    MessageBox(L"ERROR : No open image.", L"Error", MB_OK);
+    return;
+  }
+
+  // Save image
+  CString FilePathName;
+  CFileDialog dlg(FALSE);///TRUE为OPEN对话框，FALSE为SAVE AS对话框
+
+  if (dlg.DoModal() == IDOK) {
+    // TODO: Resize image
+    // Save resized image
+    FilePathName = dlg.GetPathName();
+    CT2CA pszConvertedAnsiString(FilePathName);
+    //vector that stores the compression parameters of the image
+    vector<int> compression_params;
+    //specify the compression technique
+    compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
+    //specify the compression quality
+    compression_params.push_back(100);
+    //write the image to file
+    bool bSuccess = imwrite(std::string(pszConvertedAnsiString), *img,
+                            compression_params);
+
+    if (!bSuccess) {
+      MessageBox(L"ERROR : Failed to save the image", L"Error", MB_OK);
+    }
   }
 }
