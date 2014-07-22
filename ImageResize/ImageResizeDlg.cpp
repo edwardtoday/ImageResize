@@ -49,7 +49,9 @@ END_MESSAGE_MAP()
 
 CImageResizeDlg::CImageResizeDlg(CWnd* pParent /*=NULL*/)
   : CDialogEx(CImageResizeDlg::IDD, pParent),
-    interpolation_method(0) {
+    interpolation_method(-1),
+    src_width(0), src_height(0),
+    dst_width(0), dst_height(0) {
   m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
@@ -67,6 +69,11 @@ BEGIN_MESSAGE_MAP(CImageResizeDlg, CDialogEx)
   ON_EN_KILLFOCUS(IDC_TARGET_SIZE_H_L,
                   &CImageResizeDlg::OnEnKillfocusTargetSizeHL)
   ON_BN_CLICKED(IDC_BUTTON_RESIZE, &CImageResizeDlg::OnBnClickedButtonResize)
+  ON_BN_CLICKED(IDC_RADIO_NN, &CImageResizeDlg::OnBnClickedRadioNn)
+  ON_BN_CLICKED(IDC_RADIO_BILINEAR, &CImageResizeDlg::OnBnClickedRadioBilinear)
+  ON_BN_CLICKED(IDC_RADIO_AREA, &CImageResizeDlg::OnBnClickedRadioArea)
+  ON_BN_CLICKED(IDC_RADIO_BICUBIC, &CImageResizeDlg::OnBnClickedRadioBicubic)
+  ON_BN_CLICKED(IDC_RADIO_LANCZOS, &CImageResizeDlg::OnBnClickedRadioLanczos)
 END_MESSAGE_MAP()
 
 
@@ -97,7 +104,7 @@ BOOL CImageResizeDlg::OnInitDialog() {
   SetIcon(m_hIcon, TRUE);     // Set big icon
   SetIcon(m_hIcon, FALSE);    // Set small icon
   // TODO: Add extra initialization here
-  ((CButton*)GetDlgItem(IDC_RADIO_AREA))->SetCheck(true);
+  //((CButton*)GetDlgItem(IDC_RADIO_AREA))->SetCheck(true);
   ((CButton*)GetDlgItem(IDC_TARGET_SIZE_KEEP_ASPECT))->SetCheck(true);
   return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -153,39 +160,38 @@ void CImageResizeDlg::OnBnClickedButtonOpen() {
             cv::imread(std::string(pszConvertedAnsiString), CV_LOAD_IMAGE_UNCHANGED));
 
     if (!img->empty()) {
+      src_width = img->cols;
+      src_height = img->rows;
       CString int_to_str;
-      int_to_str.Format(L"%d", img->rows);
+      int_to_str.Format(L"%d", src_width);
       GetDlgItem(IDC_SOURCE_SIZE_W_L)->SetWindowText(int_to_str);
       GetDlgItem(IDC_TARGET_SIZE_W_L)->SetWindowText(int_to_str);
-      int_to_str.Format(L"%d", img->cols);
+      int_to_str.Format(L"%d", src_height);
       GetDlgItem(IDC_SOURCE_SIZE_H_L)->SetWindowText(int_to_str);
       GetDlgItem(IDC_TARGET_SIZE_H_L)->SetWindowText(int_to_str);
-      //  cv::namedWindow("Preview",
-      //                  CV_WINDOW_AUTOSIZE); //create a window with the name "Preview"
-      //  cv::imshow("Preview",
-      //             img); //display the image which is stored in the 'img' in the "Preview" window
-      //  cv::waitKey(0); //wait infinite time for a keypress
-      //  cv::destroyWindow("Preview"); //destroy the window with the name, "Preview"
+      //create a window with the name "Source Image"
+      cv::namedWindow("Source Image", CV_WINDOW_AUTOSIZE);
+      //display the image which is stored in the 'img' in the "Source Image" window
+      cv::imshow("Source Image", *img);
+      //wait infinite time for a keypress
+      cv::waitKey(0);
+      //destroy the window with the name, "Source Image"
+      cv::destroyWindow("Source Image");
     }
   }
 }
 
 
 void CImageResizeDlg::OnEnKillfocusTargetSizeWL() {
+  CString string_value;
+  GetDlgItem(IDC_TARGET_SIZE_W_L)->GetWindowText(string_value);
+  dst_width = _wtoi(string_value);
   CButton* button = (CButton*)GetDlgItem(IDC_TARGET_SIZE_KEEP_ASPECT);
 
   if (button->GetCheck() == BST_CHECKED) {
-    CString string_value;
-    GetDlgItem(IDC_SOURCE_SIZE_W_L)->GetWindowText(string_value);
-    int src_width = _wtoi(string_value);
-    GetDlgItem(IDC_SOURCE_SIZE_H_L)->GetWindowText(string_value);
-    int src_height = _wtoi(string_value);
-
     if (src_width > 0 && src_height > 0) {
-      GetDlgItem(IDC_TARGET_SIZE_W_L)->GetWindowText(string_value);
-      int dst_width = _wtoi(string_value);
-      int dst_height = (int)round((double)src_height / (double)src_width *
-                                  (double)dst_width);
+      dst_height = (int)round((double)src_height / (double)src_width *
+                              (double)dst_width);
       string_value.Format(L"%d", dst_height);
       GetDlgItem(IDC_TARGET_SIZE_H_L)->SetWindowText(string_value);
     }
@@ -194,20 +200,15 @@ void CImageResizeDlg::OnEnKillfocusTargetSizeWL() {
 
 
 void CImageResizeDlg::OnEnKillfocusTargetSizeHL() {
+  CString string_value;
+  GetDlgItem(IDC_TARGET_SIZE_H_L)->GetWindowText(string_value);
+  dst_height = _wtoi(string_value);
   CButton* button = (CButton*)GetDlgItem(IDC_TARGET_SIZE_KEEP_ASPECT);
 
   if (button->GetCheck() == BST_CHECKED) {
-    CString string_value;
-    GetDlgItem(IDC_SOURCE_SIZE_W_L)->GetWindowText(string_value);
-    int src_width = _wtoi(string_value);
-    GetDlgItem(IDC_SOURCE_SIZE_H_L)->GetWindowText(string_value);
-    int src_height = _wtoi(string_value);
-    GetDlgItem(IDC_TARGET_SIZE_H_L)->GetWindowText(string_value);
-
     if (src_width > 0 && src_height > 0) {
-      int dst_height = _wtoi(string_value);
-      int dst_width = (int)round((double)src_width / (double)src_height *
-                                 (double)dst_height);
+      dst_width = (int)round((double)src_width / (double)src_height *
+                             (double)dst_height);
       string_value.Format(L"%d", dst_width);
       GetDlgItem(IDC_TARGET_SIZE_W_L)->SetWindowText(string_value);
     }
@@ -221,27 +222,90 @@ void CImageResizeDlg::OnBnClickedButtonResize() {
     return;
   }
 
+  if (interpolation_method == -1) {
+    MessageBox(L"ERROR : Please select an interpolation method.", L"Error", MB_OK);
+    return;
+  }
+
   // Save image
   CString FilePathName;
-  CFileDialog dlg(FALSE);///TRUE为OPEN对话框，FALSE为SAVE AS对话框
+  static TCHAR szFilter[] =
+    _T("PNG (*.png)|*.png|Bitmap (*.bmp)|*.bmp|JPEG (*.jpg)|*.jpg||");
+  CFileDialog dlg(FALSE, _T("PNG"), NULL,
+                  OFN_OVERWRITEPROMPT | OFN_EXTENSIONDIFFERENT, szFilter, this);
 
   if (dlg.DoModal() == IDOK) {
-    // TODO: Resize image
+    // Resize image
+    std::shared_ptr<cv::Mat> resized_img =
+      std::make_shared<cv::Mat>(dst_height, dst_width, img->type());
+    cv::resize(*img, *resized_img, resized_img->size(), 0, 0, interpolation_method);
     // Save resized image
     FilePathName = dlg.GetPathName();
     CT2CA pszConvertedAnsiString(FilePathName);
-    //vector that stores the compression parameters of the image
-    vector<int> compression_params;
+    SaveImage(std::string(pszConvertedAnsiString), resized_img);
+  }
+}
+
+
+void CImageResizeDlg::SaveImage(const std::string& filename,
+                                std::shared_ptr<cv::Mat> img) {
+  //vector that stores the compression parameters of the image
+  vector<int> compression_params;
+
+  if (filename.find(".jpg") != std::string::npos) {
     //specify the compression technique
     compression_params.push_back(CV_IMWRITE_JPEG_QUALITY);
     //specify the compression quality
     compression_params.push_back(100);
-    //write the image to file
-    bool bSuccess = imwrite(std::string(pszConvertedAnsiString), *img,
-                            compression_params);
+  } else if (filename.find(".png") != std::string::npos) {
+    compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
+    compression_params.push_back(9);
+  }
 
-    if (!bSuccess) {
-      MessageBox(L"ERROR : Failed to save the image", L"Error", MB_OK);
-    }
+  //write the image to file
+  bool bSuccess = imwrite(filename, *img, compression_params);
+
+  if (!bSuccess) {
+    MessageBox(L"ERROR : Failed to save the image", L"Error", MB_OK);
+  } else {
+    cv::namedWindow("Resized Image", CV_WINDOW_AUTOSIZE);
+    cv::imshow("Resized Image", *img);
+    cv::waitKey(0);
+    cv::destroyWindow("Resized Image");
+  }
+}
+
+void CImageResizeDlg::OnBnClickedRadioNn() {
+  if (((CButton*)GetDlgItem(IDC_RADIO_NN))->GetCheck()) {
+    interpolation_method = cv::INTER_NEAREST;
+  }
+}
+
+
+void CImageResizeDlg::OnBnClickedRadioBilinear() {
+  if (((CButton*)GetDlgItem(IDC_RADIO_BILINEAR))->GetCheck()) {
+    interpolation_method = cv::INTER_LINEAR;
+  }
+}
+
+
+void CImageResizeDlg::OnBnClickedRadioArea() {
+  if (((CButton*)GetDlgItem(IDC_RADIO_AREA))->GetCheck()) {
+    interpolation_method = cv::INTER_AREA;
+  }
+}
+
+
+
+void CImageResizeDlg::OnBnClickedRadioBicubic() {
+  if (((CButton*)GetDlgItem(IDC_RADIO_BICUBIC))->GetCheck()) {
+    interpolation_method = cv::INTER_CUBIC;
+  }
+}
+
+
+void CImageResizeDlg::OnBnClickedRadioLanczos() {
+  if (((CButton*)GetDlgItem(IDC_RADIO_LANCZOS))->GetCheck()) {
+    interpolation_method = cv::INTER_LANCZOS4;
   }
 }

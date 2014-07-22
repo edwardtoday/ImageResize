@@ -37,6 +37,18 @@ class CImageResizeDlg : public CDialogEx {
   afx_msg void OnBnClickedButtonResize();
 
  private:
+  void SaveImage(const std::string& filename, std::shared_ptr<cv::Mat> img);
+ private:
   int interpolation_method;
+  int src_width;
+  int src_height;
+  int dst_width;
+  int dst_height;
   std::shared_ptr<cv::Mat> img;
+ public:
+  afx_msg void OnBnClickedRadioNn();
+  afx_msg void OnBnClickedRadioBilinear();
+  afx_msg void OnBnClickedRadioArea();
+  afx_msg void OnBnClickedRadioBicubic();
+  afx_msg void OnBnClickedRadioLanczos();
 };
